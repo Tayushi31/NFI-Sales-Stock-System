@@ -53,7 +53,7 @@ if (isset($_POST['delete'])) {
    <!-- bootstrap css -->
    <link rel="stylesheet" href="css/bootstrap.min.css" />
    <!-- site css -->
-   <link rel="stylesheet" href="style.css" />
+   <link rel="stylesheet" href="css/style.css" />
    <!-- responsive css -->
    <link rel="stylesheet" href="css/responsive.css" />
    <!-- color css -->
@@ -169,7 +169,6 @@ if (isset($_POST['delete'])) {
                                        </tr>
                                     </thead>
                                     <tbody>
-                                       <form method="post">
                                           <?php
                                           $sql = "SELECT * FROM stock ORDER BY particulars";
                                           $result = mysqli_query($conn, $sql);
@@ -181,27 +180,28 @@ if (isset($_POST['delete'])) {
                                                 $particulars = $row['particulars'];
                                                 $stock_in = $row['stock_in'];
                                                 $stock_out = $row['stock_out'];
-                                                $balance = ($stock_in - $stock_out); //$row['balance'];
+                                                $balance = $row['balance'];
                                                 $remarks = $row['remarks'];
 
                                                 echo "
                                                       <tr>
                                                          <td style='width:10%;'>$date</td>
                                                          <td>$particulars</td>
-                                                         <td><a href='stock_in_view.php?pid=$id'><i class='fa fa-search' style='margin-right:10px;'></i></a>$stock_in</td>
+                                                         <td><a href='stock_in_view.php?pid=$id' data-toggle='tooltip' data-placement='bottom' title='View Stock In List'><i class='fa fa-search blue2_color' style='margin-right:10px;'></i></a>$stock_in</td>
                                                          <td>$stock_out</td>
                                                          <td>$balance</td>
                                                          <td>$remarks</td>
+                                                         <form method='post'>
                                                          <td>
                                                             <button class='btn cur-p btn-primary' name='edit' value='$id'>Edit</button>
                                                             <button class='btn cur-p btn-danger' name='delete' value='$id' onclick='return confirm(`Delete this stock?`)'>Delete</button>
                                                          </td>
+                                                         </form>
                                                       </tr>
                                                    ";
                                              }
                                           }
                                           ?>
-                                       </form>
                                     </tbody>
                                  </table>
                               </div>
@@ -210,14 +210,15 @@ if (isset($_POST['delete'])) {
                      </div>
                   </div>
                </div>
-               <!-- footer -->
+               <!-- FOOTER -->
                <div class="container-fluid">
                   <div class="footer">
                      <p>Copyright © 2024 Made by Tayushi<br><br>
-                        GitHub: <a href="https://themewagon.com/">NFI Sales Stock System</a>
+                        GitHub: <a href="https://github.com/Tayushi31/NFI-Sales-Stock-System">NFI Sales Stock System</a>
                      </p>
                   </div>
                </div>
+               <!-- END FOOTER -->
             </div>
             <!-- end dashboard inner -->
          </div>

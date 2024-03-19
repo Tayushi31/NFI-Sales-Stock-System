@@ -1,46 +1,71 @@
 <?php
 include "header.php";
 
+$id = $_GET['id'];
+$pid = $_GET['pid'];
+
+if (isset($_POST['back'])) {
+   header("Location: stock_in_view.php?pid=$pid");
+   exit();
+}
+
 if (isset($_POST['submit'])) {
    function validate($data)
    {
-      $data = trim($data);
-      $data = stripslashes($data);
-      $data = htmlspecialchars($data);
-      return $data;
+       $data = trim($data);
+       $data = stripslashes($data);
+       $data = htmlspecialchars($data);
+       return $data;
    }
-
+   
+   // Assuming $conn is a valid mysqli connection
+   
    $name = validate($_POST['name']);
    $date = validate($_POST['date']);
    $quantity = validate($_POST['quantity']);
    $remarks = validate($_POST['remarks']);
-
-   $sql = "SELECT * FROM stock_in WHERE id='$id'";
-   $result = mysqli_query($conn, $sql);
-   $row = mysqli_fetch_array($result);
-   $quantity2 = $row['quantity'];
-   $final_quantity = $quantity2 - $quantity;
-
-   $sql2 = "SELECT * FROM stock WHERE id='$pid'";
-   $result = mysqli_query($conn, $sql2);
-   $row = mysqli_fetch_array($result);
-   $stock_in = $row['stock_in'];
-   $stock_in = $stock_in - $final_quantity;
-
-   $sql3 = "UPDATE stock SET stock_in='$stock_in' WHERE id='$pid'";
-   $result = mysqli_query($conn, $sql3);
-
-   $sql4 = "UPDATE stock_in SET name='$name', date='$date', quantity='$quantity', remarks='$remarks' WHERE id='$id'";
-   //$result = mysqli_query($conn, $sql4);
-
-   // Insert the data with error handling
-   if ($conn->query($sql4) === TRUE) {
-      echo "<script>alert('Record edited successfully.')</script>";
+   
+   // Prepare and execute statement to fetch quantity from stock_in
+   $sql = "SELECT quantity FROM stock_in WHERE id = ?";
+   $stmt = mysqli_prepare($conn, $sql);
+   mysqli_stmt_bind_param($stmt, "i", $id);
+   mysqli_stmt_execute($stmt);
+   $result = mysqli_stmt_get_result($stmt);
+   
+   if ($row = mysqli_fetch_assoc($result)) {
+       $quantity2 = $row['quantity'];
+       $difference_quantity = $quantity2 - $quantity;
+   
+       // Prepare and execute statement to update stock table
+       $sql2 = "UPDATE stock SET stock_in = stock_in - ?, balance = stock_in - stock_out WHERE id = ?";
+       $stmt2 = mysqli_prepare($conn, $sql2);
+       mysqli_stmt_bind_param($stmt2, "ii", $difference_quantity, $pid);
+       $result2 = mysqli_stmt_execute($stmt2);
+   
+       if ($result2) {
+           // Prepare and execute statement to update stock_in table
+           $sql3 = "UPDATE stock_in SET name = ?, date = ?, quantity = ?, remarks = ? WHERE id = ?";
+           $stmt3 = mysqli_prepare($conn, $sql3);
+           mysqli_stmt_bind_param($stmt3, "ssisi", $name, $date, $quantity, $remarks, $id);
+           $result3 = mysqli_stmt_execute($stmt3);
+   
+           if ($result3) {
+               echo "<script>alert('Record edited successfully.')</script>";
+           } else {
+               echo "<script>alert('Error updating stock_in table: " . mysqli_error($conn) . "')</script>";
+           }
+       } else {
+           echo "<script>alert('Error updating stock table: " . mysqli_error($conn) . "')</script>";
+       }
    } else {
-      echo "<script>alert(''Error: ' . $sql4 . '<br>' . $conn -> error')</script>";
+       echo "<script>alert('Error fetching quantity: " . mysqli_error($conn) . "')</script>";
    }
+   
+   // Close prepared statements
+   mysqli_stmt_close($stmt);
+   mysqli_stmt_close($stmt2);
+   mysqli_stmt_close($stmt3);
 }
-
 ?>
 
 <!DOCTYPE html>
@@ -65,7 +90,7 @@ if (isset($_POST['submit'])) {
    <!-- bootstrap css -->
    <link rel="stylesheet" href="css/bootstrap.min.css" />
    <!-- site css -->
-   <link rel="stylesheet" href="style.css" />
+   <link rel="stylesheet" href="css/style.css" />
    <!-- responsive css -->
    <link rel="stylesheet" href="css/responsive.css" />
    <!-- color css -->
@@ -218,7 +243,7 @@ if (isset($_POST['submit'])) {
                <div class="container-fluid">
                   <div class="footer">
                   <p>Copyright © 2024 Made by Tayushi<br><br>
-                        GitHub: <a href="https://themewagon.com/">NFI Sales Stock System</a>
+                        GitHub: <a href="https://github.com/Tayushi31/NFI-Sales-Stock-System">NFI Sales Stock System</a>
                      </p>
                   </div>
                </div>

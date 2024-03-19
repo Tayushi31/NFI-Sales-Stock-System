@@ -12,19 +12,21 @@ if (isset($_POST["user_name"]) && isset($_POST["password"])) {
       return $data;
    }
 
-   $uname = mysqli_real_escape_string($conn, validate($_POST['user_name']));
-   $pass = mysqli_real_escape_string($conn, validate($_POST['password']));
+   $uname = validate($_POST['user_name']);
+   $pass = validate($_POST['password']);
 
+   // Hash the password with SHA-256
    $pass = hash("sha256", $pass);
 
-   $sql = "SELECT * FROM user WHERE user_name = '$uname' AND password = '$pass'";
+   $stmt = $conn->prepare("SELECT * FROM user WHERE user_name = ? AND password = ? LIMIT 1");
+   $stmt->bind_param("ss", $uname, $pass);
+   $stmt->execute();
+   $result = $stmt->get_result();
 
-   $result = mysqli_query($conn, $sql);
+   if ($result->num_rows === 1) {
+      $row = $result->fetch_assoc();
 
-   if (mysqli_num_rows($result) === 1) {
-      $row = mysqli_fetch_assoc($result);
-
-      if ($row['user_name'] === $uname && $row['password'] === $pass && $row['role'] === "sales") {
+      if ($row['role'] === "sales") {
          $_SESSION['user_name'] = $row['user_name'];
          $_SESSION['role'] = $row['role'];
 
@@ -32,6 +34,8 @@ if (isset($_POST["user_name"]) && isset($_POST["password"])) {
          exit();
       }
    } else {
+      // Log the failed login attempt instead of exposing details to the user
+      error_log("Failed login attempt for username: $uname", 0);
       echo "<script>alert('The username or password entered is wrong.')</script>";
    }
 }
@@ -60,7 +64,7 @@ if (isset($_POST["user_name"]) && isset($_POST["password"])) {
    <!-- bootstrap css -->
    <link rel="stylesheet" href="css/bootstrap.min.css" />
    <!-- site css -->
-   <link rel="stylesheet" href="style.css" />
+   <link rel="stylesheet" href="css/style.css" />
    <!-- responsive css -->
    <link rel="stylesheet" href="css/responsive.css" />
    <!-- color css -->
@@ -78,6 +82,16 @@ if (isset($_POST["user_name"]) && isset($_POST["password"])) {
       <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
       <![endif]-->
 </head>
+
+<style>
+   .logo_login {
+    background: url('images/layout_img/nfisss_login.jpeg');
+    padding: 50px 0;
+    height: 250px;
+    background-position: center center;
+    position: relative;
+   }
+</style>
 
 <body class="inner_page login">
    <div class="full_container">

@@ -27,28 +27,64 @@ if (isset($_POST['edit'])) {
 if (isset($_POST['delete'])) {
    $id = $_POST['delete'];
 
-   $sql = "SELECT * FROM stock WHERE id=$pid";
-   $result = mysqli_query($conn, $sql);
-   $row = mysqli_fetch_array($result);
-   $stock_in = $row['stock_in'];
+   // Fetch stock information
+   $sql = "SELECT stock_in, stock_out FROM stock WHERE id = ?";
+   $stmt = mysqli_prepare($conn, $sql);
+   mysqli_stmt_bind_param($stmt, "i", $pid);
+   mysqli_stmt_execute($stmt);
+   $result = mysqli_stmt_get_result($stmt);
 
-   $sql2 = "SELECT * FROM stock_in WHERE id=$id";
-   $result = mysqli_query($conn, $sql2);
-   $row = mysqli_fetch_array($result);
-   $quantity = $row['quantity'];
+   if ($row = mysqli_fetch_assoc($result)) {
+       $stock_in = $row['stock_in'];
+       $stock_out = $row['stock_out'];
 
-   $total_quantity = ($stock_in - $quantity);
+       // Fetch quantity from stock_in
+       $sql2 = "SELECT quantity FROM stock_in WHERE id = ?";
+       $stmt2 = mysqli_prepare($conn, $sql2);
+       mysqli_stmt_bind_param($stmt2, "i", $id);
+       mysqli_stmt_execute($stmt2);
+       $result2 = mysqli_stmt_get_result($stmt2);
 
-   $sql3 = "UPDATE stock SET stock_in=$total_quantity WHERE id=$pid";
-   $result = mysqli_query($conn, $sql3);
+       if ($row2 = mysqli_fetch_assoc($result2)) {
+           $quantity = $row2['quantity'];
 
-   $sql4 = "DELETE FROM stock_in WHERE id='$id'";
+           // Calculate new values
+           $total_quantity = $stock_in - $quantity;
+           $balance = $total_quantity - $stock_out;
 
-   if ($conn->query($sql4)) {
-      echo "<script>alert('Delete Success!')</script>";
+           // Update stock table
+           $sql3 = "UPDATE stock SET stock_in = ?, balance = ? WHERE id = ?";
+           $stmt3 = mysqli_prepare($conn, $sql3);
+           mysqli_stmt_bind_param($stmt3, "iii", $total_quantity, $balance, $pid);
+           $result3 = mysqli_stmt_execute($stmt3);
+
+           if ($result3) {
+               // Delete from stock_in table
+               $sql4 = "DELETE FROM stock_in WHERE id = ?";
+               $stmt4 = mysqli_prepare($conn, $sql4);
+               mysqli_stmt_bind_param($stmt4, "i", $id);
+               $result4 = mysqli_stmt_execute($stmt4);
+
+               if ($result4) {
+                   echo "<script>alert('Delete Success!')</script>";
+               } else {
+                   echo "<script>alert('Delete failed: " . mysqli_error($conn) . "')</script>";
+               }
+           } else {
+               echo "<script>alert('Update failed: " . mysqli_error($conn) . "')</script>";
+           }
+       } else {
+           echo "<script>alert('Error fetching quantity: " . mysqli_error($conn) . "')</script>";
+       }
    } else {
-      echo "<script>alert('Delete failed. $conn -> $error')</script>";
+       echo "<script>alert('Error fetching stock information: " . mysqli_error($conn) . "')</script>";
    }
+
+   // Close prepared statements
+   mysqli_stmt_close($stmt);
+   mysqli_stmt_close($stmt2);
+   mysqli_stmt_close($stmt3);
+   mysqli_stmt_close($stmt4);
 }
 
 ?>
@@ -75,7 +111,7 @@ if (isset($_POST['delete'])) {
    <!-- bootstrap css -->
    <link rel="stylesheet" href="css/bootstrap.min.css" />
    <!-- site css -->
-   <link rel="stylesheet" href="style.css" />
+   <link rel="stylesheet" href="css/style.css" />
    <!-- responsive css -->
    <link rel="stylesheet" href="css/responsive.css" />
    <!-- color css -->
@@ -242,7 +278,7 @@ if (isset($_POST['delete'])) {
                <div class="container-fluid">
                   <div class="footer">
                   <p>Copyright © 2024 Made by Tayushi<br><br>
-                        GitHub: <a href="https://themewagon.com/">NFI Sales Stock System</a>
+                        GitHub: <a href="https://github.com/Tayushi31/NFI-Sales-Stock-System">NFI Sales Stock System</a>
                      </p>
                   </div>
                </div>

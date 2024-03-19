@@ -4,28 +4,34 @@ include "header.php";
 if (isset($_POST['submit'])) {
    function validate($data)
    {
-      $data = trim($data);
-      $data = stripslashes($data);
-      $data = htmlspecialchars($data);
-      return $data;
+       $data = trim($data);
+       $data = stripslashes($data);
+       $data = htmlspecialchars($data);
+       return $data;
    }
 
    $date = validate($_POST['date']);
    $particulars = validate($_POST['particulars']);
    $stock_in = validate($_POST['stock_in']);
-   $stock_out = validate($_POST['stock_out']);
-   $balance = $stock_in - $stock_out;
+   $balance = $stock_in;
    $remarks = validate($_POST['remarks']);
 
-   $sql = "INSERT INTO stock(date,particulars,stock_in,stock_out,balance,remarks) VALUE('$date', '$particulars', '$stock_in', '$stock_out', '$balance', '$remarks')";
-   //$result = mysqli_query($conn, $sql);
+   // Use prepared statements to prevent SQL injection
+   $sql = "INSERT INTO stock (date, particulars, stock_in, balance, remarks) VALUES (?, ?, ?, ?, ?)";
+
+   $stmt = $conn->prepare($sql);
+   $stmt->bind_param("ssiss", $date, $particulars, $stock_in, $balance, $remarks);
 
    // Insert the data with error handling
-   if ($conn->query($sql) === TRUE) {
-      echo "<script>alert('New record successfully added.')</script>";
+   if ($stmt->execute()) {
+       echo "<script>alert('New record successfully added.')</script>";
    } else {
-      echo "<script>alert(''Error: ' . $sql . '<br>' . $conn -> error')</script>";
+       // Display a more informative error message
+       echo "<script>alert('Error: " . $stmt->error . "')</script>";
    }
+
+   // Close the statement
+   $stmt->close();
 }
 
 ?>
@@ -52,7 +58,7 @@ if (isset($_POST['submit'])) {
    <!-- bootstrap css -->
    <link rel="stylesheet" href="css/bootstrap.min.css" />
    <!-- site css -->
-   <link rel="stylesheet" href="style.css" />
+   <link rel="stylesheet" href="css/style.css" />
    <!-- responsive css -->
    <link rel="stylesheet" href="css/responsive.css" />
    <!-- color css -->
@@ -162,12 +168,8 @@ if (isset($_POST['submit'])) {
                                                    <td><input type="text" name="particulars" class="form-field" required></td>
                                                 </tr>
                                                 <tr style="height:50px;">
-                                                   <td>Stock In</td>
+                                                   <td>Initial Stock</td>
                                                    <td><input type="number" name="stock_in" class="form-field" required></td>
-                                                </tr>
-                                                <tr style="height:50px;">
-                                                   <td>Stock Out</td>
-                                                   <td><input type="number" name="stock_out" class="form-field" required></td>
                                                 </tr>
                                                 <tr style="height:50px;">
                                                    <td>Remarks</td>
@@ -193,7 +195,7 @@ if (isset($_POST['submit'])) {
                <div class="container-fluid">
                   <div class="footer">
                      <p>Copyright © 2024 Made by Tayushi<br><br>
-                        GitHub: <a href="https://themewagon.com/">NFI Sales Stock System</a>
+                        GitHub: <a href="https://github.com/Tayushi31/NFI-Sales-Stock-System">NFI Sales Stock System</a>
                      </p>
                   </div>
                </div>

@@ -1,24 +1,33 @@
 <?php
 include "header.php";
 
-$id = $_SESSION['id'];
+// Validate and sanitize the 'id' obtained from the session
+$id = filter_var($_SESSION['id'], FILTER_VALIDATE_INT);
 
-$sql = "SELECT * FROM stock WHERE id='$id'";
-$result = mysqli_query($conn,$sql);
-$row = mysqli_fetch_assoc($result);
-$date = $row['date'];
-$particulars = $row['particulars'];
-$stock_in = $row['stock_in'];
-$stock_out = $row['stock_out'];
-$balance = $row['balance'];
-$remarks = $row['remarks'];
+// Prepare and execute a SELECT query using a prepared statement
+$stmt = $conn->prepare("SELECT * FROM stock WHERE id=?");
+$stmt->bind_param("i", $id);
+$stmt->execute();
+$result = $stmt->get_result();
+$row = $result->fetch_assoc();
 
+// HTML escape output to prevent XSS attacks
+$date = htmlspecialchars($row['date'], ENT_QUOTES, 'UTF-8');
+$particulars = htmlspecialchars($row['particulars'], ENT_QUOTES, 'UTF-8');
+$stock_in = htmlspecialchars($row['stock_in'], ENT_QUOTES, 'UTF-8');
+$stock_out = htmlspecialchars($row['stock_out'], ENT_QUOTES, 'UTF-8');
+$balance = htmlspecialchars($row['balance'], ENT_QUOTES, 'UTF-8');
+$remarks = htmlspecialchars($row['remarks'], ENT_QUOTES, 'UTF-8');
+
+// Redirect to 'stock_list.php' if the 'back' button is clicked
 if (isset($_POST['back'])) {
    header("Location: stock_list.php");
    exit();
 }
 
+// Process form submission if the 'submit' button is clicked
 if (isset($_POST['submit'])) {
+   // Function to validate and sanitize input data
    function validate($data)
    {
       $data = trim($data);
@@ -27,6 +36,7 @@ if (isset($_POST['submit'])) {
       return $data;
    }
 
+   // Validate and sanitize form input data
    $date = validate($_POST['date']);
    $particulars = validate($_POST['particulars']);
    $stock_in = validate($_POST['stock_in']);
@@ -34,17 +44,22 @@ if (isset($_POST['submit'])) {
    $balance = validate($_POST['balance']);
    $remarks = validate($_POST['remarks']);
 
-   $sql = "INSERT INTO stock(date,particulars,stock_in,stock_out,balance,remarks) VALUE('$date', '$particulars', '$stock_in', '$stock_out', '$balance', '$remarks')";
-   //$result = mysqli_query($conn, $sql);
+   // Prepare and execute an INSERT query using a prepared statement
+   $stmt = $conn->prepare("UPDATE stock SET date=?, particulars=?, stock_in=?, stock_out=?, balance=?, remarks=? WHERE id=?");
+   $stmt->bind_param("sssissi", $date, $particulars, $stock_in, $stock_out, $balance, $remarks, $id);
 
    // Insert the data with error handling
-   if ($conn->query($sql) === TRUE) {
+   if ($stmt->execute()) {
       echo "<script>alert('Record edited successfully.')</script>";
    } else {
-      echo "<script>alert(''Error: ' . $sql . '<br>' . $conn -> error')</script>";
+      // Log the error and provide a user-friendly message
+      error_log("Error editing record: " . $stmt->error);
+      echo "<script>alert('An error occurred while editing the record. Please try again.')</script>";
    }
-}
 
+   // Close the statement
+   $stmt->close();
+}
 ?>
 
 <!DOCTYPE html>
@@ -69,7 +84,7 @@ if (isset($_POST['submit'])) {
    <!-- bootstrap css -->
    <link rel="stylesheet" href="css/bootstrap.min.css" />
    <!-- site css -->
-   <link rel="stylesheet" href="style.css" />
+   <link rel="stylesheet" href="css/style.css" />
    <!-- responsive css -->
    <link rel="stylesheet" href="css/responsive.css" />
    <!-- color css -->
@@ -220,7 +235,7 @@ if (isset($_POST['submit'])) {
                <div class="container-fluid">
                   <div class="footer">
                   <p>Copyright © 2024 Made by Tayushi<br><br>
-                        GitHub: <a href="https://themewagon.com/">NFI Sales Stock System</a>
+                        GitHub: <a href="https://github.com/Tayushi31/NFI-Sales-Stock-System">NFI Sales Stock System</a>
                      </p>
                   </div>
                </div>

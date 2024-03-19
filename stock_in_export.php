@@ -1,27 +1,10 @@
 <?php
-session_start();
-include "db_conn.php";
-
-if (isset($_SESSION['LAST_ACTIVITY']) && (time() - $_SESSION['LAST_ACTIVITY'] > 1800)) {
-    // last request was more than 30 minutes ago
-    session_unset();     // unset $_SESSION variable for the run-time 
-    session_destroy();   // destroy session data in storage
-    header('Location: login.php');
-    exit();
-}
-$_SESSION['LAST_ACTIVITY'] = time(); // update last activity time stamp
-
-$user_name = $_SESSION['user_name'];
+include "header.php";
 
 $pid = $_GET['pid'];
 
 if (isset($_POST['back'])) {
     header("Location: stock_in_view.php?pid=$pid");
-    exit();
-}
-
-if (isset($_POST['export'])) {
-    header("Location: stock_list_export.php");
     exit();
 }
 
@@ -54,7 +37,7 @@ if (isset($_POST['stock_in'])) {
     <!-- bootstrap css -->
     <link rel="stylesheet" href="css/bootstrap.min.css" />
     <!-- site css -->
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="css/style.css" />
     <!-- responsive css -->
     <link rel="stylesheet" href="css/responsive.css" />
     <!-- color css -->
@@ -156,7 +139,7 @@ if (isset($_POST['stock_in'])) {
                                     <div class="table_section padding_infor_info">
                                         <div class="table-responsive-sm">
                                             <div class="heading1 margin_0">
-                                                <h2 style="text-align: center;">Export Stock Out List</h2>
+                                                <h2 style="text-align: center;">Export Stock In List</h2>
                                             </div>
                                             <table class="table" id="datatable">
                                                 <thead class="thead-dark">
@@ -165,7 +148,6 @@ if (isset($_POST['stock_in'])) {
                                                         <th>Date</th>
                                                         <th>Quantity</th>
                                                         <th>Remarks</th>
-                                                        <th>Action</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -187,10 +169,6 @@ if (isset($_POST['stock_in'])) {
                                                          <td>$date</td>
                                                          <td>$quantity</td>
                                                          <td>$remarks</td>
-                                                         <td>
-                                                            <button class='btn cur-p btn-primary' name='edit' value='$id'>Edit</button>
-                                                            <button class='btn cur-p btn-danger' name='delete' value='$id' onclick='return confirm(`Delete this stock?`)'>Delete</button>
-                                                         </td>
                                                       </tr>
                                                    ";
                                                         }
@@ -209,7 +187,7 @@ if (isset($_POST['stock_in'])) {
                 <div class="container-fluid">
                     <div class="footer">
                     <p>Copyright © 2024 Made by Tayushi<br><br>
-                        GitHub: <a href="https://themewagon.com/">NFI Sales Stock System</a>
+                        GitHub: <a href="https://github.com/Tayushi31/NFI-Sales-Stock-System">NFI Sales Stock System</a>
                      </p>
                     </div>
                 </div>

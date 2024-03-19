@@ -9,6 +9,7 @@ if (isset($_POST['back'])) {
 }
 
 if (isset($_POST['submit'])) {
+   // Function to validate and sanitize input data
    function validate($data)
    {
       $data = trim($data);
@@ -17,32 +18,80 @@ if (isset($_POST['submit'])) {
       return $data;
    }
 
+   // Validate and sanitize form input data
    $name = validate($_POST['name']);
    $date = validate($_POST['date']);
-   $products_name = validate($_POST['products_name']);
+   $pid = validate($_POST['products_name']);
    $quantity = validate($_POST['quantity']);
    $remarks = validate($_POST['remarks']);
 
-   $sql1 = "SELECT * FROM stock WHERE id=$products_name";
-   $result = mysqli_query($conn, $sql1);
-   $row = mysqli_fetch_array($result);
-   $stock_out = $row['stock_out'];
-   $total_quantity = ($stock_out + $quantity);
+   // Fetch the previous quantity from stock_out table
+   $sql1 = "SELECT quantity FROM stock_out WHERE id = ?";
+   $stmt1 = mysqli_prepare($conn, $sql1);
+   mysqli_stmt_bind_param($stmt1, "i", $id);
+   mysqli_stmt_execute($stmt1);
+   $result1 = mysqli_stmt_get_result($stmt1);
 
-   $sql2 = "UPDATE stock SET stock_out=$total_quantity WHERE id=$products_name";
-   $result = mysqli_query($conn, $sql2);
+   if ($row1 = mysqli_fetch_assoc($result1)) {
+      $quantityprev = $row1['quantity'];
 
-   $sql3 = "UPDATE stock_out SET name='$name', date='$date', products_name='$products_name', quantity='$quantity', remarks='$remarks' WHERE id='$id'";
-   //$result = mysqli_query($conn, $sql);
+      // Fetch the current stock details for the specified product ID
+      $sql2 = "SELECT particulars, stock_in, stock_out FROM stock WHERE id = ?";
+      $stmt2 = mysqli_prepare($conn, $sql2);
+      mysqli_stmt_bind_param($stmt2, "i", $pid);
+      mysqli_stmt_execute($stmt2);
+      $result2 = mysqli_stmt_get_result($stmt2);
 
-   // Insert the data with error handling
-   if ($conn->query($sql3) === TRUE) {
-      echo "<script>alert('Record added successfully.')</script>";
+      // Check if the query executed successfully
+      if ($row2 = mysqli_fetch_assoc($result2)) {
+         $products_name = $row2['particulars'];
+         $stock_in = $row2['stock_in'];
+         $stock_out = $row2['stock_out'];
+
+         // Calculate the updated quantities and balance
+         $total_quantity = $stock_out + ($quantity - $quantityprev);
+         $balance = $stock_in - $total_quantity;
+
+         // Update the stock table with the new quantities
+         $sql3 = "UPDATE stock SET stock_out = ?, balance = ? WHERE id = ?";
+         $stmt3 = mysqli_prepare($conn, $sql3);
+         mysqli_stmt_bind_param($stmt3, "iii", $total_quantity, $balance, $pid);
+         
+
+         // Check if the update query executed successfully
+         if ($result3 = mysqli_stmt_execute($stmt3)) {
+            // Insert into the stock_out table with prepared statement
+            $sql4 = "UPDATE stock_out SET name = ?, date = ?, products_name = ?, quantity = ?, remarks = ?, stock_id = ? WHERE id = ?";
+            $stmt4 = mysqli_prepare($conn, $sql4);
+            mysqli_stmt_bind_param($stmt4, "sssisii", $name, $date, $products_name, $quantity, $remarks, $pid, $id);
+
+            // Check if the insert query executed successfully
+            if ($result4 = mysqli_stmt_execute($stmt4)) {
+               echo "<script>alert('Record edited successfully.')</script>";
+            } else {
+               // Log the error and provide a user-friendly message
+               echo "<script>alert('Error updating record: " . mysqli_error($conn) . "')</script>";
+            }
+         } else {
+            // Log the error and provide a user-friendly message
+            echo "<script>alert('Error updating stock table: " . mysqli_error($conn) . "')</script>";
+         }
+      } else {
+         // Log the error and provide a user-friendly message
+         echo "<script>alert('Error fetching stock details: " . mysqli_error($conn) . "')</script>";
+      }
    } else {
-      echo "<script>alert(''Error: ' . $sql3 . '<br>' . $conn -> error')</script>";
+      // Log the error and provide a user-friendly message
+      echo "<script>alert('Error fetching stock out details: " . mysqli_error($conn) . "')</script>";
    }
-}
 
+   // Close prepared statements
+   mysqli_stmt_close($stmt1);
+   mysqli_stmt_close($stmt2);
+   mysqli_stmt_close($stmt3);
+   mysqli_stmt_close($stmt4);
+
+}
 ?>
 
 <!DOCTYPE html>
@@ -67,7 +116,7 @@ if (isset($_POST['submit'])) {
    <!-- bootstrap css -->
    <link rel="stylesheet" href="css/bootstrap.min.css" />
    <!-- site css -->
-   <link rel="stylesheet" href="style.css" />
+   <link rel="stylesheet" href="css/style.css" />
    <!-- responsive css -->
    <link rel="stylesheet" href="css/responsive.css" />
    <!-- color css -->
@@ -159,7 +208,7 @@ if (isset($_POST['submit'])) {
                      <div class="col-md-12">
                         <div class="page_title">
                            <form method="post">
-                              <h2 style="float: left;">Stock In List</h2>
+                              <h2 style="float: left;">New Stock Out</h2>
                               <button class="btn cur-p btn-secondary" style="float: right; margin: -7px;" name="back">
                                  < Back</button>
                            </form>
@@ -167,7 +216,7 @@ if (isset($_POST['submit'])) {
                         <div class="white_shd full margin_bottom_30">
                            <div class="full graph_head">
                               <div class="heading1 margin_0">
-                                 <h2>Edit Stock In List</h2>
+                                 <h2>Edit Stock Out List</h2>
                               </div>
                               <div class="table_section padding_infor_info">
                                  <div class="table-responsive-sm">
@@ -176,29 +225,65 @@ if (isset($_POST['submit'])) {
                                           <div class="form-group">
                                              <form method="post">
                                                 <?php
-                                                $sql = "SELECT * FROM stock_in WHERE id='$id'";
+                                                $sql = "SELECT * FROM stock_out WHERE id='$id'";
                                                 $result = mysqli_query($conn, $sql);
-                                                $row = mysqli_fetch_array($result);
+                                                $row = mysqli_fetch_assoc($result);
                                                 $name = $row['name'];
+                                                $products_name = $row['products_name'];
                                                 $date = $row['date'];
                                                 $quantity = $row['quantity'];
                                                 $remarks = $row['remarks'];
+                                                $stock_id = $row['stock_id'];
                                                 ?>
                                                 <tr style="height:50px;">
                                                    <td>Name</td>
-                                                   <td><input type="text" name="name" class="form-field" value="<?php echo $name; ?>"></td>
+                                                   <td><input type="text" name="name" class="form-field" value="<?php echo $name; ?>" required></td>
                                                 </tr>
                                                 <tr style="height:50px; width:100%;">
                                                    <td>Date</td>
-                                                   <td><input type="date" name="date" class="form-field" value="<?php echo $date; ?>"></td>
+                                                   <td><input type="date" name="date" class="form-field" value="<?php echo $date; ?>" required></td>
                                                 </tr>
-                                                <tr style="height:50px;">
-                                                   <td>Quantity</td>
-                                                   <td><input type="number" name="quantity" class="form-field" value="<?php echo $quantity; ?>"></td>
+                                                <tr>
+                                                   <td colspan=2>
+                                                      <h4 style="text-align:center; margin:10px; margin-top:20px;">Products Chosen</h4>
+                                                   </td>
+                                                </tr>
+                                                <tr>
+                                                   <td colspan=2>
+                                                      <div id="dynamic_field">
+                                                         <table>
+                                                            <tr style="height:50px;">
+                                                               <td style="padding:10px">
+                                                                  <select class="form-field" name="products_name" required>
+                                                                     <!-- <option value="<?php echo $stock_id; ?>" disabled hidden selected><?php echo $products_name; ?></option> -->
+                                                                     <!-- <option disabled hidden selected>&lt;Please select a value&gt;</option> -->
+                                                                     <?php
+                                                                     $sql = "SELECT * FROM stock";
+                                                                     $result = mysqli_query($conn, $sql);
+
+                                                                     if ($result) {
+                                                                        while ($row = mysqli_fetch_array($result)) {
+                                                                           $oid = $row['id'];
+                                                                           $particulars = $row['particulars'];
+
+                                                                           echo "
+                                                                                 <option value='$oid'>$particulars</option>
+                                                                              ";
+                                                                        }
+                                                                     }
+                                                                     ?>
+                                                                  </select>
+                                                               </td>
+                                                               <td style="padding:10px; width:30%"><input type="number" name="quantity" class="form-field" value="<?php echo $quantity; ?>" required></td>
+                                                            </tr>
+                                                         </table>
+                                                      </div>
+
+                                                   </td>
                                                 </tr>
                                                 <tr style="height:50px;">
                                                    <td>Remarks</td>
-                                                   <td><input type="text" name="remarks" class="form-field" value="<?php echo $remarks; ?>"></td>
+                                                   <td><input type="text" name="remarks" class="form-field" value="<?php echo $remarks; ?>" required></td>
                                                 </tr>
                                                 <tr style="height:50px;">
                                                    <td colspan="2">
@@ -219,8 +304,8 @@ if (isset($_POST['submit'])) {
                <!-- footer -->
                <div class="container-fluid">
                   <div class="footer">
-                  <p>Copyright © 2024 Made by Tayushi<br><br>
-                        GitHub: <a href="https://themewagon.com/">NFI Sales Stock System</a>
+                     <p>Copyright © 2024 Made by Tayushi<br><br>
+                        GitHub: <a href="https://github.com/Tayushi31/NFI-Sales-Stock-System">NFI Sales Stock System</a>
                      </p>
                   </div>
                </div>
